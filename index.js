@@ -21,6 +21,22 @@ app.use(cors({
 app.use(cookieParser())
 app.use(morgan('dev'))
 
+const verifyToken = async (req, res, next) => {
+  const token = req.cookies?.token
+  console.log(token)
+  if (!token) {
+    return res.status(401).send({ message: 'unauthorized access' })
+  }
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if (err) {
+      console.log(err)
+      return res.status(401).send({ message: 'unauthorized access' })
+    }
+    req.user = decoded
+    next()
+  })
+}
+
 
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.r8pib.mongodb.net/?retryWrites=true&w=majority`;
@@ -40,6 +56,8 @@ async function run() {
     // await client.connect();
     // Send a ping to confirm a successful connection
     const userCollection = client.db('dineSmart').collection('users');
+    const mealCollection = client.db('dineSmart').collection('meals');
+
 
 
     // auth api
@@ -56,6 +74,22 @@ async function run() {
           sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
         })
         .send({ success: true })
+    })
+
+    // logout and clear token
+    app.get('/logout', async (req, res) => {
+      try {
+        res
+          .clearCookie('token', {
+            maxAge: 0,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+          })
+          .send({ success: true })
+        console.log('Logout successful')
+      } catch (err) {
+        res.status(500).send(err)
+      }
     })
 
 
@@ -75,6 +109,12 @@ async function run() {
         },
         options
       )
+      res.send(result)
+    })
+
+    // meals related api
+    app.get('/meals', async(req, res) => {
+      const result = await mealCollection.find().toArray()
       res.send(result)
     })
 
