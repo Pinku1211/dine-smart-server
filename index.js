@@ -14,7 +14,7 @@ app.use(express.json());
 app.use(cors({
   origin: [
     'http://localhost:5173',
-    
+
   ],
   credentials: true
 }));
@@ -93,8 +93,8 @@ async function run() {
     })
 
 
-     // Save or modify user email, status in DB
-     app.put('/users/:email', async (req, res) => {
+    // Save or modify user email, status in DB
+    app.put('/users/:email', async (req, res) => {
       const email = req.params.email
       const user = req.body
       const query = { email: email }
@@ -113,26 +113,83 @@ async function run() {
     })
 
     // meals related api
-    app.get('/meals', async(req, res) => {
+    app.get('/meals', async (req, res) => {
       const result = await mealCollection.find().toArray()
       res.send(result)
     })
 
-    app.get('/meal/:id', async(req, res) => {
+    app.get('/meal/:id', async (req, res) => {
       const id = req.params.id
-      const query = {_id: new ObjectId(id)}
+      const query = { _id: new ObjectId(id) }
+      const result = await mealCollection.findOne(query);
+      res.send(result)
+    })
+    app.get('/dashboard/all-meals/meal/:id', async (req, res) => {
+      const id = req.params.id
+      const query = { _id: new ObjectId(id) }
       const result = await mealCollection.findOne(query);
       res.send(result)
     })
 
+    app.get('/dashboard/all-meals/update/:id', async (req, res) => {
+      const id = req.params.id
+      const query = { _id: new ObjectId(id) }
+      const result = await mealCollection.findOne(query);
+      res.send(result)
+    })
+
+    app.post('/meals', async (req, res) => {
+      const newMeal = req.body;
+      const result = await mealCollection.insertOne(newMeal)
+      res.send(result)
+    })
+
+
+    // delete a meal
+    app.delete('/dashboard/all-meals/meal/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await mealCollection.deleteOne(query)
+      res.send(result)
+    })
+    
+
+
+    // update a meal
+
+    app.put('/dashboard/all-meals/meal/:id', async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updatedMeal = req.body;
+      const job = {
+        $set: {
+          meal_title: updatedMeal.meal_title,
+          meal_type: updatedMeal.name_posted,
+          meal_image: updatedMeal.meal_type,
+          ingredients: updatedMeal.ingredients,
+          description: updatedMeal.description,
+          price: updatedMeal.price,
+          rating: updatedMeal.rating,
+          post_time: updatedMeal.post_time,
+          likes: parseInt(updatedMeal.likes),
+          admin_name: updatedMeal.admin_name,
+          admin_email: updatedMeal.admin_email,
+        }
+      }
+      const result = await jobCollection.updateOne(filter, job, options);
+      res.send(result)
+    })
+
+
     // user related api
-    app.get('/user/:email', async(req, res) => {
+    app.get('/user/:email', async (req, res) => {
       const email = req.params.email
-      const query = {email: email}
+      const query = { email: email }
       const result = await userCollection.findOne(query);
       res.send(result)
     })
-  
+
 
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
@@ -145,10 +202,10 @@ run().catch(console.dir);
 
 
 app.get('/', (req, res) => {
-    res.send('Hello from template Server..')
-  })
+  res.send('Hello from template Server..')
+})
 
 
 app.listen(port, () => {
-console.log(`template is running on port ${port}`)
+  console.log(`template is running on port ${port}`)
 })
