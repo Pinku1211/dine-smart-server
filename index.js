@@ -2,7 +2,7 @@
 const express = require('express')
 const app = express();
 const cors = require('cors');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const jwt = require('jsonwebtoken')
 const cookieParser = require('cookie-parser')
 const morgan = require('morgan')
@@ -118,6 +118,21 @@ async function run() {
       res.send(result)
     })
 
+    app.get('/meal/:id', async(req, res) => {
+      const id = req.params.id
+      const query = {_id: new ObjectId(id)}
+      const result = await mealCollection.findOne(query);
+      res.send(result)
+    })
+
+    // user related api
+    app.get('/user/:email', async(req, res) => {
+      const email = req.params.email
+      const query = {email: email}
+      const result = await userCollection.findOne(query);
+      res.send(result)
+    })
+  
 
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
