@@ -58,6 +58,7 @@ async function run() {
     // Send a ping to confirm a successful connection
     const userCollection = client.db('dineSmart').collection('users');
     const mealCollection = client.db('dineSmart').collection('meals');
+    const requestedMealCollection = client.db('dineSmart').collection('requestedMeals');
 
 
 
@@ -118,6 +119,15 @@ async function run() {
       const result = await mealCollection.find().toArray()
       res.send(result)
     })
+    // app.get('/meals', async (req, res) => {
+    //   const filter = req.query
+    //   console.log(filter)
+    //   const query = {
+    //     price: {$lt: 10, $gt: 5}
+    //   };
+    //   const result = await mealCollection.find(query).toArray()
+    //   res.send(result)
+    // })
 
     app.get('/meal/:id', async (req, res) => {
       const id = req.params.id
@@ -182,6 +192,26 @@ async function run() {
       res.send(result)
     })
 
+    // requested meal api ------------------
+    app.post('/requestedMeals', async (req, res) => {
+      const orderedMeal = req.body;
+      const result = await requestedMealCollection.insertOne(orderedMeal)
+      res.send(result)
+    })
+
+    app.get('/requestedMeals', async (req, res) => {
+      const result = await requestedMealCollection.find().toArray()
+      res.send(result)
+    })
+
+    app.get('/requestedMeals/:name', async(req, res)=>{
+      const name = req.params.name;
+      const query = {user_name : name};
+      const result = await requestedMealCollection.findOne(query);
+      res.send(result)
+
+    })
+
 
     // user related api----------------------------
     app.get('/users', async (req, res) => {
@@ -193,6 +223,21 @@ async function run() {
       const email = req.params.email
       const query = { email: email }
       const result = await userCollection.findOne(query);
+      res.send(result)
+    })
+
+    app.put('/user/:email', async(req, res) => {
+      const email = req.params.email
+      const query = { email: email }
+      const options = { upsert: true };
+      const updatedStatus = req.body;
+      console.log(updatedStatus)
+      const status = {
+        $set: {
+          "status" : updatedStatus.badge
+        }
+      }
+      const result = await userCollection.updateOne(query, status, options)
       res.send(result)
     })
 
