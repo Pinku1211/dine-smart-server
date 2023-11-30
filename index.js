@@ -15,7 +15,8 @@ app.use(express.json());
 app.use(cors({
   origin: [
     'http://localhost:5173',
-
+    // "https://dinesmart-a232f.web.app/",
+    // "https://dinesmart-a232f.firebaseapp.com/"
   ],
   credentials: true
 }));
@@ -59,6 +60,7 @@ async function run() {
     const userCollection = client.db('dineSmart').collection('users');
     const mealCollection = client.db('dineSmart').collection('meals');
     const requestedMealCollection = client.db('dineSmart').collection('requestedMeals');
+    const upcomingMealCollection = client.db('dineSmart').collection('upcomingMeals');
 
 
 
@@ -115,24 +117,38 @@ async function run() {
     })
 
     // meals related api
-    app.get('/meals', async (req, res) => {
-      const result = await mealCollection.find().toArray()
-      res.send(result)
-    })
+
     // app.get('/meals', async (req, res) => {
-    //   const filter = req.query
-    //   console.log(filter)
-    //   const query = {
-    //     price: {$lt: 10, $gt: 5}
-    //   };
-    //   const result = await mealCollection.find(query).toArray()
+    //   const result = await mealCollection.find().toArray()
     //   res.send(result)
     // })
+    app.get('/meals', async (req, res) => {
+      const filter = req.query
+      const lowerPrice = parseInt(filter.sort.split(',')[0])
+      const higherPrice = parseInt(filter.sort.split(',')[1])
+      const searchedText = filter.search
+      const categoryText = filter.category
+      const query = {
+        price: {$lt: higherPrice, $gt: lowerPrice},
+        meal_title: { $regex: searchedText, $options: 'i'},
+        meal_type: { $regex: categoryText },
+
+      };
+      const result = await mealCollection.find(query).toArray()
+      res.send(result)
+    })
 
     app.get('/meal/:id', async (req, res) => {
       const id = req.params.id
       const query = { _id: new ObjectId(id) }
       const result = await mealCollection.findOne(query);
+      res.send(result)
+    })
+    
+    app.get('/meals/:email', async (req, res) => {
+      const email = req.params.email
+      const query = { admin_email : email }
+      const result = await mealCollection.find(query).toArray();
       res.send(result)
     })
     app.get('/dashboard/all-meals/meal/:id', async (req, res) => {
@@ -155,7 +171,7 @@ async function run() {
       res.send(result)
     })
 
-
+  
     // delete a meal
     app.delete('/dashboard/all-meals/meal/:id', async (req, res) => {
       const id = req.params.id;
@@ -192,6 +208,47 @@ async function run() {
       res.send(result)
     })
 
+    // upcoming meal collection-----------------
+    app.post('/upcomingMeals', async (req, res) => {
+      const newMeal = req.body;
+      const result = await upcomingMealCollection.insertOne(newMeal)
+      res.send(result)
+    })
+    app.get('/upcomingMeals', async (req, res) => {
+      const result = await upcomingMealCollection.find().toArray()
+      res.send(result)
+    })
+
+    app.get('/upcomingMeals/:id', async(req, res)=> {
+      const id = req.params.id;
+      const query = { _id : new ObjectId(id)};
+      const result = await upcomingMealCollection.findOne(query);
+      res.send(result);
+    })
+    app.put('/upcomingMeals/:id', async(req, res)=> {
+      const id = req.params.id;
+      const query = { _id : new ObjectId(id)};
+      const update = {
+        $inc: {
+          'likes' : 1
+        }
+      }
+      const result = await upcomingMealCollection.updateOne(query, update);
+      res.send(result);
+    })
+    app.put('/upcomingMeal/:id', async(req, res)=> {
+      const id = req.params.id;
+      const query = { _id : new ObjectId(id)};
+      const update = {
+        $inc: {
+          'likes' : - 1
+        }
+      }
+      const result = await upcomingMealCollection.updateOne(query, update);
+      res.send(result);
+    })
+
+
     // requested meal api ------------------
     app.post('/requestedMeals', async (req, res) => {
       const orderedMeal = req.body;
@@ -200,18 +257,42 @@ async function run() {
     })
 
     app.get('/requestedMeals', async (req, res) => {
-      const result = await requestedMealCollection.find().toArray()
+      const filter = req.query;
+      console.log(filter)
+      const query = {
+        user_name : { $regex : filter.sort, $options: 'i'},
+        email: { $regex : filter.searchedEmail, $options: 'i'}
+      }
+      const result = await requestedMealCollection.find(query).toArray()
       res.send(result)
     })
 
-    app.get('/requestedMeals/:name', async(req, res)=>{
-      const name = req.params.name;
-      const query = {user_name : name};
-      const result = await requestedMealCollection.findOne(query);
+    app.get('/requestedMeals/:email', async(req, res) => {
+      const email = req.params.email
+      const query = { email : email }
+      const result = await requestedMealCollection.find(query).toArray();
       res.send(result)
-
     })
 
+    app.put('/requestedMeals/:id', async(req, res) => {
+      const id = req.params.id
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const makeDelivered = {
+        $set: {
+          "status" : "delivered"
+        }
+      }
+      const result = await requestedMealCollection.updateOne(filter, makeDelivered, options)
+      res.send(result)
+    })
+
+    app.delete('/requestedMeals/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await requestedMealCollection.deleteOne(query)
+      res.send(result)
+    })
 
     // user related api----------------------------
     app.get('/users', async (req, res) => {
