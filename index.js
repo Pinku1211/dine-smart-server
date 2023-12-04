@@ -14,9 +14,9 @@ const port = process.env.PORT || 5000;
 app.use(express.json());
 app.use(cors({
   origin: [
-    'http://localhost:5173',
-    // "https://dinesmart-a232f.web.app",
-    // "https://dinesmart-a232f.firebaseapp.com"
+    // 'http://localhost:5173',
+    "https://dinesmart-a232f.web.app",
+    "https://dinesmart-a232f.firebaseapp.com"
   ],
   credentials: true
 }));
@@ -37,6 +37,18 @@ const verifyToken = async (req, res, next) => {
     req.user = decoded
     next()
   })
+}
+
+const verifyAdmin = async (req, res, next)=> {
+  const email = req.decoded.email;
+  console.log(email)
+  const query = {email : email};
+  const user = await userCollection.findOne(query);
+  const isAdmin = user?.role === 'admin';
+  if(!isAdmin){
+    return res.status(403).send({ message: 'forbidden access' })
+  }
+  next();
 }
 
 
@@ -227,7 +239,6 @@ async function run() {
       const result = await mealCollection.deleteOne(query)
       res.send(result)
     })
-
 
 
     // update a meal
@@ -428,6 +439,32 @@ async function run() {
       }
       const result = await userCollection.updateOne(filter, makeAdmin, options)
       res.send(result)
+    })
+
+    // push like and meal name
+    app.put('/addLike/:email', async (req, res) => {
+      const email = req.params.email;
+      const mealTitle = req.body;
+      const query = { email : email };
+      const update = {
+        $push: {
+          likedMeals : mealTitle.meal_title
+        }
+      }
+      const result = await userCollection.updateOne(query, update);
+      res.send(result);
+    })
+
+    app.put('/increase/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const update = {
+        $inc: {
+          'likes': 1
+        }
+      }
+      const result = await mealCollection.updateOne(query, update);
+      res.send(result);
     })
 
     // stripe payment -----------------------------------
